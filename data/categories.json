@@ -1,0 +1,29 @@
+[
+  {
+    "id": "wifi",
+    "name": "Wi-Fi・光回線",
+    "icon": "📶",
+    "color": "#3B82F6",
+    "description": "各社の光回線・インターネットプランを比較",
+    "order": 1,
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "water",
+    "name": "ウォーターサーバー",
+    "icon": "💧",
+    "color": "#06B6D4",
+    "description": "おいしい水をご自宅・オフィスへ",
+    "order": 2,
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "electricity",
+    "name": "でんき",
+    "icon": "⚡",
+    "color": "#F59E0B",
+    "description": "新電力・電力会社の切り替えでお得に",
+    "order": 1,
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  }
+]
