@@ -2,10 +2,9 @@ import fs from 'fs';
 import path from 'path';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
+const USE_BLOB = !!process.env.BLOB_READ_WRITE_TOKEN;
 
-const USE_REDIS = !!process.env.UPSTASH_REDIS_REST_URL;
-
-// ── File helpers (dev / fallback) ──────────────────────────────────────────
+// ── File helpers (development) ─────────────────────────────────────────────
 
 function readFile<T>(filename: string, fallback: T): T {
   const filepath = path.join(DATA_DIR, filename);
@@ -22,44 +21,41 @@ function writeFile<T>(filename: string, data: T): void {
   fs.writeFileSync(path.join(DATA_DIR, filename), JSON.stringify(data, null, 2));
 }
 
-// ── Redis helpers (production) ─────────────────────────────────────────────
+// ── Blob helpers (production) ──────────────────────────────────────────────
 
-import { Redis } from '@upstash/redis';
-
-let _redis: Redis | null = null;
-
-function getRedis(): Redis {
-  if (!_redis) {
-    _redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+async function readBlob<T>(key: string, fallback: T): Promise<T> {
+  const { list, put } = await import('@vercel/blob');
+  const { blobs } = await list({ prefix: `data/${key}.json` });
+  if (blobs.length === 0) {
+    await put(`data/${key}.json`, JSON.stringify(fallback), {
+      access: 'public',
+      contentType: 'application/json',
+      addRandomSuffix: false,
     });
-  }
-  return _redis;
-}
-
-async function readRedis<T>(key: string, fallback: T): Promise<T> {
-  const data = await getRedis().get<T>(key);
-  if (data === null) {
-    await getRedis().set(key, fallback);
     return fallback;
   }
-  return data;
+  const res = await fetch(blobs[0].url, { cache: 'no-store' });
+  return await res.json() as T;
 }
 
-async function writeRedis<T>(key: string, data: T): Promise<void> {
-  await getRedis().set(key, data);
+async function writeBlob<T>(key: string, data: T): Promise<void> {
+  const { put } = await import('@vercel/blob');
+  await put(`data/${key}.json`, JSON.stringify(data), {
+    access: 'public',
+    contentType: 'application/json',
+    addRandomSuffix: false,
+  });
 }
 
-// ── Unified async storage ──────────────────────────────────────────────────
+// ── Unified storage ────────────────────────────────────────────────────────
 
 async function readJson<T>(key: string, fallback: T): Promise<T> {
-  if (USE_REDIS) return readRedis(key, readFile<T>(key + '.json', fallback));
+  if (USE_BLOB) return readBlob(key, readFile<T>(key + '.json', fallback));
   return readFile(key + '.json', fallback);
 }
 
 async function writeJson<T>(key: string, data: T): Promise<void> {
-  if (USE_REDIS) return writeRedis(key, data);
+  if (USE_BLOB) return writeBlob(key, data);
   writeFile(key + '.json', data);
 }
 
@@ -109,7 +105,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
   footerText: '© 2026 SYS株式会社',
 };
 
-// ── DB ────────────────────────────────────────────────────────────────────
+// ── DB ─────────────────────────────────────────────────────────────────────
 
 export const db = {
   categories: {
