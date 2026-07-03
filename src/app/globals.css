@@ -5,6 +5,10 @@
 html {
   font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body { margin: 0; background: #fff; color: #111; }
+
+a { transition: opacity 0.2s; }
+a:hover { opacity: 0.72; }

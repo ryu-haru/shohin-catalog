@@ -31,11 +31,21 @@ async function readBlob<T>(key: string, fallback: T): Promise<T> {
       access: 'public',
       contentType: 'application/json',
       addRandomSuffix: false,
+      cacheControlMaxAge: 60,
     });
     return fallback;
   }
-  const res = await fetch(blobs[0].url, { cache: 'no-store' });
-  return await res.json() as T;
+  // Blob URLs are served through a CDN that keeps serving the old file for a
+  // while after an overwrite, so bust the cache key on every read.
+  const bustUrl = `${blobs[0].url}?v=${blobs[0].uploadedAt.getTime()}`;
+  const res = await fetch(bustUrl, { cache: 'no-store' });
+  if (!res.ok) return fallback;
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 async function writeBlob<T>(key: string, data: T): Promise<void> {
@@ -44,6 +54,8 @@ async function writeBlob<T>(key: string, data: T): Promise<void> {
     access: 'public',
     contentType: 'application/json',
     addRandomSuffix: false,
+    allowOverwrite: true,
+    cacheControlMaxAge: 60,
   });
 }
 
