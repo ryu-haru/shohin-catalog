@@ -63,25 +63,25 @@ export default function ProductsAdminPage() {
       features: form.features.filter(f => f.trim()),
       details: form.details.filter(d => d.key.trim()),
     };
-    if (editTarget) {
-      await fetch(`/api/products/${editTarget.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    } else {
-      await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-    }
+    const res = editTarget
+      ? await fetch(`/api/products/${editTarget.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+      : await fetch('/api/products', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const saved: Product = await res.json();
+    setProducts(prev => (editTarget ? prev.map(p => p.id === saved.id ? saved : p) : [...prev, saved]).sort((a, b) => a.order - b.order));
     setSaving(false);
     closeDrawer();
-    load();
   };
 
   const remove = async (id: string, name: string) => {
     if (!confirm(`「${name}」を削除しますか？`)) return;
     await fetch(`/api/products/${id}`, { method: 'DELETE' });
-    load();
+    setProducts(prev => prev.filter(p => p.id !== id));
   };
 
   const toggleActive = async (p: Product) => {
-    await fetch(`/api/products/${p.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !p.isActive }) });
-    load();
+    const res = await fetch(`/api/products/${p.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !p.isActive }) });
+    const updated: Product = await res.json();
+    setProducts(prev => prev.map(x => x.id === updated.id ? updated : x));
   };
 
   const uploadImage = async (file: File) => {

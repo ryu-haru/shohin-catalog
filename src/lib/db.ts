@@ -24,10 +24,13 @@ function writeFile<T>(filename: string, data: T): void {
 // ── Blob helpers (production) ──────────────────────────────────────────────
 
 async function readBlob<T>(key: string, fallback: T): Promise<T> {
-  const { list, put } = await import('@vercel/blob');
-  const { blobs } = await list({ prefix: `data/${key}.json` });
-  if (blobs.length === 0) {
-    await put(`data/${key}.json`, JSON.stringify(fallback), {
+  const { head, put } = await import('@vercel/blob');
+  const pathname = `data/${key}.json`;
+  let meta;
+  try {
+    meta = await head(pathname);
+  } catch {
+    await put(pathname, JSON.stringify(fallback), {
       access: 'public',
       contentType: 'application/json',
       addRandomSuffix: false,
@@ -36,8 +39,8 @@ async function readBlob<T>(key: string, fallback: T): Promise<T> {
     return fallback;
   }
   // Blob URLs are served through a CDN that keeps serving the old file for a
-  // while after an overwrite, so bust the cache key on every read.
-  const bustUrl = `${blobs[0].url}?v=${blobs[0].uploadedAt.getTime()}`;
+  // while after an overwrite, so bust the cache key using the blob's own etag.
+  const bustUrl = `${meta.url}?v=${meta.etag.replace(/"/g, '')}`;
   const res = await fetch(bustUrl, { cache: 'no-store' });
   if (!res.ok) return fallback;
   const text = await res.text();

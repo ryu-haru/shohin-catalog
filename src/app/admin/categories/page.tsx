@@ -42,25 +42,25 @@ export default function CategoriesAdminPage() {
   const save = async () => {
     if (!form.name.trim()) return alert('カテゴリ名を入力してください');
     setSaving(true);
-    if (editTarget) {
-      await fetch(`/api/categories/${editTarget.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-    } else {
-      await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
-    }
+    const res = editTarget
+      ? await fetch(`/api/categories/${editTarget.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
+      : await fetch('/api/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) });
+    const saved: Category = await res.json();
+    setCategories(prev => (editTarget ? prev.map(c => c.id === saved.id ? saved : c) : [...prev, saved]).sort((a, b) => a.order - b.order));
     setSaving(false);
     closeDrawer();
-    load();
   };
 
   const remove = async (id: string, name: string) => {
     if (!confirm(`「${name}」を削除しますか？`)) return;
     await fetch(`/api/categories/${id}`, { method: 'DELETE' });
-    load();
+    setCategories(prev => prev.filter(c => c.id !== id));
   };
 
   const moveOrder = async (cat: Category, dir: -1 | 1) => {
-    await fetch(`/api/categories/${cat.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: cat.order + dir }) });
-    load();
+    const res = await fetch(`/api/categories/${cat.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: cat.order + dir }) });
+    const updated: Category = await res.json();
+    setCategories(prev => prev.map(c => c.id === updated.id ? updated : c).sort((a, b) => a.order - b.order));
   };
 
   if (loading) return <div style={{ color: '#9CA3AF', padding: 32, textAlign: 'center' }}>読み込み中...</div>;
